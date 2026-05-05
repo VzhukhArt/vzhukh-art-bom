@@ -23,6 +23,11 @@ dependencies {
     }
 }
 
+// Добавьте этот блок, чтобы убрать ошибку
+tasks.withType<GenerateModuleMetadata>().configureEach {
+    suppressedValidationErrors.add("enforced-platform")
+}
+
 publishing {
     publications {
         create<MavenPublication>("maven") {
