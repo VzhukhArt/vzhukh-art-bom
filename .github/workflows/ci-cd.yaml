@@ -1,0 +1,48 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Нужно для корректного определения тегов
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      # Шаг: Сборка и тесты (всегда)
+      - name: Build with Gradle
+        run: ./gradlew build
+
+      # Шаг: Публикация (только если это тег)
+      - name: Publish to GitHub Packages
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          # Вырезаем 'v' из названия тега (v1.0.1 -> 1.0.1)
+          CLEAN_VERSION=${GITHUB_REF_NAME#v}
+          ./gradlew publish -PprojVersion=$CLEAN_VERSION
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          # Прикрепляем собранные jar файлы к релизу
+          files: build/libs/*.jar
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
